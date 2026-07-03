@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Souboj v bludišti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#14101F;
+    --ink-2:#1D1830;
+    --ink-3:#26203D;
+    --gold:#C9A24B;
+    --gold-bright:#E0BD6E;
+    --text-light:#F2EEE4;
+    --text-muted:#9C93B8;
+    --red:#FF5C5C;
+    --red-glow:rgba(255,92,92,0.45);
+    --blue:#4FA8FF;
+    --blue-glow:rgba(79,168,255,0.45);
+    --wall:rgba(242,238,228,0.55);
+    --serif:'Fraunces', serif;
+    --sans:'Work Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(circle at 50% 0%, #201A34 0%, var(--ink) 60%);
+    color:var(--text-light);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 14px;
+  }
+  .app{width:100%; max-width:560px;}
+  .eyebrow{
+    text-transform:uppercase; letter-spacing:.18em; font-size:12px;
+    color:var(--gold-bright); text-align:center; margin:0 0 8px 0;
+  }
+  h1{
+    font-family:var(--serif); font-weight:700; font-size:36px;
+    text-align:center; margin:0 0 6px 0; letter-spacing:-.01em;
+  }
+  .vs-title{display:flex; align-items:center; justify-content:center; gap:12px;}
+  .vs-title .r{color:var(--red);}
+  .vs-title .b{color:var(--blue);}
+  .vs-title .x{font-family:var(--sans); font-size:18px; color:var(--text-muted);}
+  .sub{text-align:center; color:var(--text-muted); font-size:15px; margin:0 0 32px 0; line-height:1.5;}
+  .card{
+    background:var(--ink-2); border:1px solid rgba(201,162,75,0.16);
+    border-radius:18px; padding:26px; margin-bottom:16px;
+    box-shadow:0 24px 60px -24px rgba(0,0,0,0.65);
+  }
+  .card h2{font-family:var(--serif); font-size:21px; font-weight:600; margin:0 0 4px 0;}
+  .card p.hint{color:var(--text-muted); font-size:13.5px; margin:0 0 18px 0; line-height:1.5;}
+  input[type=text]{
+    width:100%; background:var(--ink); border:1px solid rgba(156,147,184,0.28);
+    color:var(--text-light); border-radius:10px; padding:12px 14px;
+    font-family:var(--sans); font-size:15px; text-align:center;
+    text-transform:uppercase; letter-spacing:.1em;
+  }
+  input[type=text]:focus{outline:2px solid var(--gold); outline-offset:1px; border-color:transparent;}
+  button{
+    font-family:var(--sans); font-weight:700; font-size:15px; border-radius:10px;
+    border:none; padding:13px 20px; cursor:pointer; transition:transform .12s ease, filter .12s ease;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:active{transform:scale(0.98);}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-primary{background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#241705; width:100%;}
+  .btn-secondary{background:transparent; color:var(--text-light); border:1px solid rgba(156,147,184,0.32); width:100%;}
+  .btn-ghost{background:transparent; color:var(--text-muted); font-size:13px; padding:6px 4px;}
+  .field{margin-bottom:14px;}
+  .divider{display:flex; align-items:center; gap:12px; color:var(--text-muted); font-size:12px;
+    text-transform:uppercase; letter-spacing:.12em; margin:24px 0;}
+  .divider::before, .divider::after{content:''; flex:1; height:1px; background:rgba(156,147,184,0.2);}
+  .code-display{
+    font-family:var(--serif); font-size:34px; letter-spacing:.12em; text-align:center;
+    color:var(--gold-bright); background:var(--ink); border:1px dashed rgba(201,162,75,0.4);
+    border-radius:12px; padding:16px; margin:14px 0; user-select:all;
+  }
+  .pulse-dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--gold-bright); margin-right:8px; animation:blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink{0%,100%{opacity:.3;} 50%{opacity:1;}}
+  .waiting-row{display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:14px; padding:8px 0 4px 0;}
+  .error-text{color:var(--red); font-size:13px; margin-top:-6px; margin-bottom:14px; display:none;}
+
+  /* game area */
+  .game-wrap{position:relative; display:flex; flex-direction:column; align-items:center;}
+  .hud{
+    display:flex; justify-content:space-between; align-items:center; width:100%;
+    margin-bottom:14px; font-size:13px;
+  }
+  .hud .who{display:flex; align-items:center; gap:8px; font-weight:600;}
+  .swatch{width:12px; height:12px; border-radius:50%;}
+  .swatch.r{background:var(--red); box-shadow:0 0 10px var(--red-glow);}
+  .swatch.b{background:var(--blue); box-shadow:0 0 10px var(--blue-glow);}
+  .maze-shell{
+    position:relative; background:var(--ink); border-radius:16px;
+    border:1px solid rgba(201,162,75,0.18); padding:14px;
+    box-shadow:0 24px 60px -24px rgba(0,0,0,0.7);
+  }
+  .maze-inner{position:relative;}
+  .token{
+    position:absolute; border-radius:50%;
+    transition: left .1s linear, top .1s linear;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; z-index:5;
+  }
+  .token.red{background:var(--red); box-shadow:0 0 14px var(--red-glow);}
+  .token.blue{background:var(--blue); box-shadow:0 0 14px var(--blue-glow);}
+  .countdown-overlay{
+    position:absolute; inset:0; background:rgba(20,16,31,0.88);
+    display:flex; align-items:center; justify-content:center;
+    border-radius:16px; z-index:20;
+  }
+  .countdown-num{
+    font-family:var(--serif); font-weight:900; font-size:96px; color:var(--gold-bright);
+    animation:pop .5s ease;
+  }
+  @keyframes pop{ 0%{transform:scale(0.5); opacity:0;} 60%{transform:scale(1.15); opacity:1;} 100%{transform:scale(1);} }
+  .controls-hint{
+    text-align:center; color:var(--text-muted); font-size:13px; margin-top:14px; line-height:1.6;
+  }
+  .result-card{text-align:center;}
+  .result-headline{
+    font-family:var(--serif); font-weight:800; font-size:34px; margin:6px 0 2px 0;
+  }
+  .result-headline.win{color:var(--gold-bright);}
+  .result-headline.lose{color:var(--text-light);}
+  .footnote{text-align:center; color:var(--text-muted); font-size:12px; line-height:1.6; margin-top:18px; opacity:.75;}
+  @media (prefers-reduced-motion: reduce){
+    .token{transition:none;}
+    .countdown-num{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB9LZu9ExDcuzpdrD0tjLoiHFI6amu2cik",
+  authDomain: "test-8c6fe.firebaseapp.com",
+  projectId: "test-8c6fe",
+  storageBucket: "test-8c6fe.firebasestorage.app",
+  messagingSenderId: "419426633105",
+  appId: "1:419426633105:web:91d04d4af75d7e17510630"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const GAMES = 'mazegames';
+const app = document.getElementById('app');
+
+const W = 11, H = 9, CELL = 38;
+
+let state = {
+  screen: 'home',
+  code: null,
+  role: null, // 'red' or 'blue'
+  unsubscribe: null,
+  maze: null, // {width,height,walls:flatArray}
+  redStart:null, blueStart:null, redDoor:null, blueDoor:null,
+  myPos: null,
+  oppPos: null,
+  lastRound: 0,
+  phase: 'lobby', // lobby, countdown, playing, finished
+  winner: null,
+  countdownTimers: [],
+  keyHandlerAttached: false,
+  moveLock: false
+};
+
+function genCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for(let i=0;i<5;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
+
+// ---------- maze generation ----------
+function generateMazeWalls(w,h){
+  const cells = [];
+  for(let y=0;y<h;y++){ const row=[]; for(let x=0;x<w;x++){ row.push({N:true,E:true,S:true,W:true,visited:false}); } cells.push(row); }
+  const stack = [{x:0,y:0}];
+  cells[0][0].visited = true;
+  const dirs = [
+    {dx:0,dy:-1,dir:'N',opp:'S'},
+    {dx:1,dy:0,dir:'E',opp:'W'},
+    {dx:0,dy:1,dir:'S',opp:'N'},
+    {dx:-1,dy:0,dir:'W',opp:'E'}
+  ];
+  while(stack.length){
+    const cur = stack[stack.length-1];
+    const options = [];
+    for(const d of dirs){
+      const nx = cur.x+d.dx, ny = cur.y+d.dy;
+      if(nx>=0 && nx<w && ny>=0 && ny<h && !cells[ny][nx].visited){
+        options.push({x:nx, y:ny, dir:d.dir, opp:d.opp});
+      }
+    }
+    if(options.length){
+      const n = options[Math.floor(Math.random()*options.length)];
+      cells[cur.y][cur.x][n.dir] = false;
+      cells[n.y][n.x][n.opp] = false;
+      cells[n.y][n.x].visited = true;
+      stack.push({x:n.x, y:n.y});
+    } else {
+      stack.pop();
+    }
+  }
+  const flat = new Array(w*h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const c = cells[y][x];
+      flat[y*w+x] = (c.N?1:0) | (c.E?2:0) | (c.S?4:0) | (c.W?8:0);
+    }
+  }
+  return flat;
+}
+
+function randCell(w,h){ return {x:Math.floor(Math.random()*w), y:Math.floor(Math.random()*h)}; }
+function manhattan(a,b){ return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); }
+
+function pickPositions(w,h){
+  const minDist = Math.max(4, Math.floor((w+h)/3));
+  for(let attempt=0; attempt<300; attempt++){
+    const redStart=randCell(w,h), blueStart=randCell(w,h), redDoor=randCell(w,h), blueDoor=randCell(w,h);
+    const pts = [redStart, blueStart, redDoor, blueDoor];
+    let ok = true;
+    for(let i=0;i<pts.length && ok;i++){
+      for(let j=i+1;j<pts.length;j++){
+        if(manhattan(pts[i],pts[j]) < minDist){ ok=false; break; }
+      }
+    }
+    if(ok) return {redStart, blueStart, redDoor, blueDoor};
+  }
+  return {redStart:{x:0,y:0}, blueStart:{x:w-1,y:h-1}, redDoor:{x:w-1,y:0}, blueDoor:{x:0,y:h-1}};
+}
+
+function canMove(walls,w,h,x,y,dir){
+  const code = walls[y*w+x];
+  if(dir==='N') return y>0 && !(code & 1);
+  if(dir==='E') return x<w-1 && !(code & 2);
+  if(dir==='S') return y<h-1 && !(code & 4);
+  if(dir==='W') return x>0 && !(code & 8);
+  return false;
+}
+
+async function buildAndCreateRoom(code){
+  const walls = generateMazeWalls(W,H);
+  const pos = pickPositions(W,H);
+  await db.collection(GAMES).doc(code).set({
+    width: W, height: H, walls,
+    redStart: pos.redStart, blueStart: pos.blueStart,
+    redDoor: pos.redDoor, blueDoor: pos.blueDoor,
+    positions: { red: pos.redStart, blue: null },
+    joined: { red: true, blue: false },
+    status: 'waiting',
+    winner: null,
+    round: 1,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function regenerateRoom(code, prevRound){
+  const walls = generateMazeWalls(W,H);
+  const pos = pickPositions(W,H);
+  await db.collection(GAMES).doc(code).set({
+    width: W, height: H, walls,
+    redStart: pos.redStart, blueStart: pos.blueStart,
+    redDoor: pos.redDoor, blueDoor: pos.blueDoor,
+    positions: { red: pos.redStart, blue: pos.blueStart },
+    joined: { red: true, blue: true },
+    status: 'countdown',
+    winner: null,
+    round: (prevRound||1) + 1,
+    countdownStartAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+// ---------- rendering ----------
+function render(){
+  if(state.screen==='home') return renderHome();
+  if(state.screen==='join') return renderJoinLoading();
+  if(state.screen==='lobby') return renderLobby();
+  if(state.screen==='game') return renderGame();
+}
+
+function shell(inner){
+  app.innerHTML = `
+    <p class="eyebrow">Dva hráči &middot; jedno bludiště</p>
+    <h1 class="vs-title"><span class="r">Červený</span><span class="x">vs</span><span class="b">Modrý</span></h1>
+    <p class="sub">Kdo první najde svoje dveře, vyhrává. Bludiště je pokaždé jiné.</p>
+    ${inner}
+  `;
+}
+
+function renderHome(){
+  shell(`
+    <div class="card">
+      <h2>Založit hru</h2>
+      <p class="hint">Vytvoříš bludiště a dostaneš kód. Ty budeš hrát za <span style="color:var(--red)">Červeného</span>.</p>
+      <button class="btn-primary" onclick="createLobby()">Založit lobby</button>
+    </div>
+    <div class="divider">nebo</div>
+    <div class="card">
+      <h2>Mám kód</h2>
+      <p class="hint">Připojíš se k rozehrané hře jako <span style="color:var(--blue)">Modrý</span>.</p>
+      <div class="field">
+        <input type="text" id="joinCodeInput" placeholder="např. K7QX2" maxlength="5">
+      </div>
+      <button class="btn-secondary" onclick="submitJoinCode()">Připojit se</button>
+      <p class="error-text" id="joinError"></p>
+    </div>
+  `);
+}
+
+async function createLobby(){
+  const code = genCode();
+  try{
+    await buildAndCreateRoom(code);
+  }catch(e){
+    alert('Nepodařilo se založit hru: ' + (e && e.message ? e.message : e));
+    return;
+  }
+  state.code = code;
+  state.role = 'red';
+  state.screen = 'lobby';
+  render();
+  listenToRoom();
+}
+
+function renderJoinLoading(){
+  shell(`<div class="card"><p class="waiting-row">Hledám hru…</p></div>`);
+}
+
+async function submitJoinCode(){
+  const val = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  const errEl = document.getElementById('joinError');
+  errEl.style.display = 'none';
+  if(!val) return;
+  state.screen = 'join';
+  render();
+  const snap = await db.collection(GAMES).doc(val).get();
+  if(!snap.exists){
+    state.screen = 'home';
+    render();
+    document.getElementById('joinCodeInput').value = val;
+    document.getElementById('joinError').textContent = 'Kód ' + val + ' jsme nenašli.';
+    document.getElementById('joinError').style.display = 'block';
+    return;
+  }
+  const data = snap.data();
+  if(data.joined && data.joined.blue){
+    state.screen = 'home';
+    render();
+    document.getElementById('joinCodeInput').value = val;
+    document.getElementById('joinError').textContent = 'Tahle hra už má dva hráče.';
+    document.getElementById('joinError').style.display = 'block';
+    return;
+  }
+  await db.collection(GAMES).doc(val).set({
+    joined: { blue: true },
+    positions: { blue: data.blueStart },
+    status: 'countdown',
+    countdownStartAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  state.code = val;
+  state.role = 'blue';
+  state.screen = 'lobby';
+  render();
+  listenToRoom();
+}
+
+function renderLobby(){
+  shell(`
+    <div class="card">
+      <h2>Kód hry</h2>
+      <p class="hint">Pošli kód druhému hráči, ať se připojí.</p>
+      <div class="code-display">${state.code}</div>
+      <div class="waiting-row"><span class="pulse-dot"></span>Čeká se na druhého hráče…</div>
+    </div>
+    <button class="btn-ghost" onclick="leaveToHome()">&larr; Zrušit</button>
+  `);
+}
+
+function leaveToHome(){
+  if(state.unsubscribe) state.unsubscribe();
+  detachKeys();
+  state = Object.assign(state, {
+    screen:'home', code:null, role:null, unsubscribe:null, maze:null,
+    myPos:null, oppPos:null, lastRound:0, phase:'lobby', winner:null
+  });
+  render();
+}
+
+function listenToRoom(){
+  if(state.unsubscribe) state.unsubscribe();
+  state.unsubscribe = db.collection(GAMES).doc(state.code).onSnapshot(snap=>{
+    if(!snap.exists) return;
+    const data = snap.data();
+    handleRoomUpdate(data);
+  }, err=>{ console.error(err); });
+}
+
+function handleRoomUpdate(data){
+  state.maze = { width: data.width, height: data.height, walls: data.walls };
+  state.redDoor = data.redDoor; state.blueDoor = data.blueDoor;
+  state.redStart = data.redStart; state.blueStart = data.blueStart;
+
+  if(data.status === 'finished'){
+    const changed = state.phase !== 'finished' || state.winner !== data.winner;
+    state.winner = data.winner;
+    state.phase = 'finished';
+    if(changed){
+      detachKeys();
+      state.screen = 'game';
+      render();
+    }
+    return;
+  }
+
+  if(data.status === 'countdown' && data.round > state.lastRound){
+    state.lastRound = data.round;
+    state.myPos = state.role === 'red' ? data.redStart : data.blueStart;
+    state.oppPos = state.role === 'red' ? data.blueStart : data.redStart;
+    state.winner = null;
+    state.phase = 'countdown';
+    state.screen = 'game';
+    render();
+    runCountdown();
+    return;
+  }
+
+  // ongoing playing state: sync opponent position live
+  if(state.phase === 'playing' && data.positions){
+    const oppRole = state.role === 'red' ? 'blue' : 'red';
+    const newOpp = data.positions[oppRole];
+    if(newOpp && (!state.oppPos || newOpp.x!==state.oppPos.x || newOpp.y!==state.oppPos.y)){
+      state.oppPos = newOpp;
+      updateTokenPosition('opp-token', newOpp);
+    }
+  }
+}
+
+function runCountdown(){
+  clearCountdownTimers();
+  const steps = ['3','2','1','START!'];
+  steps.forEach((label, i)=>{
+    const t = setTimeout(()=>{
+      const el = document.getElementById('countdownNum');
+      if(el){ el.textContent = label; el.style.animation='none'; void el.offsetWidth; el.style.animation='pop .5s ease'; }
+      if(i === steps.length-1){
+        setTimeout(()=>{
+          const overlay = document.getElementById('countdownOverlay');
+          if(overlay) overlay.remove();
+          const hint = document.getElementById('controlsHint');
+          if(hint) hint.textContent = 'Ovládej šipkami nebo WASD.';
+          state.phase = 'playing';
+          attachKeys();
+        }, 500);
+      }
+    }, i*800);
+    state.countdownTimers.push(t);
+  });
+}
+function clearCountdownTimers(){
+  state.countdownTimers.forEach(t=>clearTimeout(t));
+  state.countdownTimers = [];
+}
+
+function renderGame(){
+  const w = state.maze.width, h = state.maze.height;
+  const pxW = w*CELL, pxH = h*CELL;
+  const myColor = state.role;
+  const oppColor = state.role === 'red' ? 'blue' : 'red';
+  const myDoor = state.role === 'red' ? state.redDoor : state.blueDoor;
+  const oppDoor = state.role === 'red' ? state.blueDoor : state.redDoor;
+
+  shell(`
+    <div class="game-wrap">
+      <div class="hud">
+        <div class="who"><span class="swatch ${myColor==='red'?'r':'b'}"></span>Ty (${myColor==='red'?'Červený':'Modrý'})</div>
+        <div class="who"><span class="swatch ${oppColor==='red'?'r':'b'}"></span>Soupeř</div>
+      </div>
+      <div class="maze-shell">
+        <div class="maze-inner" id="mazeInner" style="width:${pxW}px; height:${pxH}px;">
+          ${renderMazeSVG(w,h,state.maze.walls, myDoor, oppDoor, myColor, oppColor)}
+          <div class="token ${myColor}" id="my-token" style="width:${CELL-12}px; height:${CELL-12}px; left:${state.myPos.x*CELL+6}px; top:${state.myPos.y*CELL+6}px;"></div>
+          <div class="token ${oppColor}" id="opp-token" style="width:${CELL-12}px; height:${CELL-12}px; left:${(state.oppPos?state.oppPos.x:0)*CELL+6}px; top:${(state.oppPos?state.oppPos.y:0)*CELL+6}px;"></div>
+        </div>
+        ${state.phase==='countdown' ? `<div class="countdown-overlay" id="countdownOverlay"><div class="countdown-num" id="countdownNum">3</div></div>` : ''}
+        ${state.phase==='finished' ? renderResultOverlay() : ''}
+      </div>
+      <p class="controls-hint" id="controlsHint">${state.phase==='playing' ? 'Ovládej šipkami nebo WASD.' : (state.phase==='finished' ? '' : 'Za chvíli to začne…')}</p>
+    </div>
+  `);
+}
+
+function renderResultOverlay(){
+  const iWon = state.winner === state.role;
+  return `
+    <div class="countdown-overlay">
+      <div class="result-card">
+        <div class="result-headline ${iWon?'win':'lose'}">${iWon ? 'Vyhrál jsi!' : 'Prohrál jsi'}</div>
+        <p class="hint" style="margin:8px 0 20px 0;">${iWon ? 'Dostal ses do svých dveří jako první.' : (state.winner==='red'?'Červený':'Modrý') + ' byl rychlejší.'}</p>
+        <button class="btn-primary" onclick="playAgain()">Hrát znovu</button>
+        <div style="height:8px"></div>
+        <button class="btn-ghost" onclick="leaveToHome()">Odejít domů</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMazeSVG(w,h,walls,myDoor,oppDoor,myColor,oppColor){
+  let lines = '';
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const code = walls[y*w+x];
+      const x0=x*CELL, y0=y*CELL, x1=(x+1)*CELL, y1=(y+1)*CELL;
+      if(code & 1) lines += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}"/>`;
+      if(code & 2) lines += `<line x1="${x1}" y1="${y0}" x2="${x1}" y2="${y1}"/>`;
+      if(code & 4) lines += `<line x1="${x0}" y1="${y1}" x2="${x1}" y2="${y1}"/>`;
+      if(code & 8) lines += `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}"/>`;
+    }
+  }
+  const RED_HEX = '#FF5C5C', BLUE_HEX = '#4FA8FF', WALL_HEX = 'rgba(242,238,228,0.55)';
+  const doorColor = myColor==='red' ? RED_HEX : BLUE_HEX;
+  const oppDoorColor = oppColor==='red' ? RED_HEX : BLUE_HEX;
+  const doors = `
+    <rect x="${myDoor.x*CELL+5}" y="${myDoor.y*CELL+5}" width="${CELL-10}" height="${CELL-10}" rx="6" fill="none" stroke="${doorColor}" stroke-width="3"/>
+    <rect x="${oppDoor.x*CELL+5}" y="${oppDoor.y*CELL+5}" width="${CELL-10}" height="${CELL-10}" rx="6" fill="none" stroke="${oppDoorColor}" stroke-width="3" opacity="0.55"/>
+  `;
+  return `<svg width="${w*CELL}" height="${h*CELL}" style="position:absolute; top:0; left:0;">
+    <rect x="0" y="0" width="${w*CELL}" height="${h*CELL}" fill="none" stroke="${WALL_HEX}" stroke-width="3"/>
+    <g stroke="${WALL_HEX}" stroke-width="2" stroke-linecap="round">${lines}</g>
+    ${doors}
+  </svg>`;
+}
+
+function updateTokenPosition(id, pos){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.style.left = (pos.x*CELL+6) + 'px';
+  el.style.top = (pos.y*CELL+6) + 'px';
+}
+
+// ---------- controls ----------
+const KEYMAP = {
+  ArrowUp:'N', KeyW:'N',
+  ArrowRight:'E', KeyD:'E',
+  ArrowDown:'S', KeyS:'S',
+  ArrowLeft:'W', KeyA:'W'
+};
+
+function onKeyDown(e){
+  if(state.phase !== 'playing') return;
+  const dir = KEYMAP[e.code];
+  if(!dir) return;
+  e.preventDefault();
+  if(state.moveLock) return;
+  const w = state.maze.width, h = state.maze.height;
+  const {x,y} = state.myPos;
+  if(!canMove(state.maze.walls, w, h, x, y, dir)) return;
+  state.moveLock = true;
+  setTimeout(()=>{ state.moveLock = false; }, 90);
+  let nx=x, ny=y;
+  if(dir==='N') ny--; if(dir==='S') ny++; if(dir==='E') nx++; if(dir==='W') nx--;
+  state.myPos = {x:nx, y:ny};
+  updateTokenPosition('my-token', state.myPos);
+
+  const myRole = state.role;
+  db.collection(GAMES).doc(state.code).set({
+    positions: { [myRole]: state.myPos }
+  }, { merge:true }).catch(()=>{});
+
+  const myDoor = myRole === 'red' ? state.redDoor : state.blueDoor;
+  if(nx === myDoor.x && ny === myDoor.y){
+    state.phase = 'finished';
+    state.winner = myRole;
+    detachKeys();
+    render();
+    db.collection(GAMES).doc(state.code).set({
+      status:'finished', winner: myRole
+    }, { merge:true }).catch(()=>{});
+  }
+}
+
+function attachKeys(){
+  if(state.keyHandlerAttached) return;
+  window.addEventListener('keydown', onKeyDown);
+  state.keyHandlerAttached = true;
+}
+function detachKeys(){
+  if(!state.keyHandlerAttached) return;
+  window.removeEventListener('keydown', onKeyDown);
+  state.keyHandlerAttached = false;
+}
+
+async function playAgain(){
+  detachKeys();
+  clearCountdownTimers();
+  try{
+    await regenerateRoom(state.code, state.lastRound);
+  }catch(e){
+    alert('Nepodařilo se spustit novou hru: ' + (e && e.message ? e.message : e));
+  }
+}
+
+render();
+</script>
+</body>
+</html>
