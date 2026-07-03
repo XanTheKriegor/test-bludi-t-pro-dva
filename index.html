@@ -105,6 +105,7 @@
     position:relative; background:var(--ink); border-radius:16px;
     border:1px solid rgba(201,162,75,0.18); padding:14px;
     box-shadow:0 24px 60px -24px rgba(0,0,0,0.7);
+    max-width:100%; overflow-x:auto;
   }
   .maze-inner{position:relative;}
   .token{
@@ -158,7 +159,7 @@ const db = firebase.firestore();
 const GAMES = 'mazegames';
 const app = document.getElementById('app');
 
-const W = 11, H = 9, CELL = 38;
+const W = 17, H = 13, CELL = 28;
 
 let state = {
   screen: 'home',
